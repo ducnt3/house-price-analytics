@@ -10,17 +10,22 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+# Computer Modern — the classic LaTeX typeface — instead of the DejaVu default,
+# so slide formulas look properly typeset
+matplotlib.rcParams["mathtext.fontset"] = "cm"
+
 OUT = Path(__file__).resolve().parent.parent / "branding" / "formulas"
-INK = "#3a3a3a"
+INK = "#2b2b2b"
 
 FORMULAS = {
     # modeling target
     "target": r"$y \;=\; \log\left(1 + \mathrm{SalePrice}\right)$",
-    # evaluation metrics
-    "metrics": (
+    # evaluation metrics (one line per image so nothing collides)
+    "metrics_errors": (
         r"$\mathrm{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}\left(y_i - \hat{y}_i\right)^2}"
         r"\qquad \mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n}\left|y_i - \hat{y}_i\right|$"
-        "\n"
+    ),
+    "metrics_relative": (
         r"$\mathrm{MAPE} = \frac{100\%}{n}\sum_{i=1}^{n}\left|\frac{y_i - \hat{y}_i}{y_i}\right|"
         r"\qquad R^2 = 1 - \frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2}$"
     ),
@@ -31,10 +36,11 @@ FORMULAS = {
         r"\quad \alpha \in \{0.10,\,0.50,\,0.90\}$"
     ),
     # conformalized quantile regression (Romano et al., 2019)
-    "cqr": (
+    "cqr_score": (
         r"$E_i \;=\; \mathrm{max}\left(\hat{q}_{0.10}(x_i) - y_i,\;"
         r" y_i - \hat{q}_{0.90}(x_i)\right)$"
-        "\n"
+    ),
+    "cqr_interval": (
         r"$\hat{C}(x) \;=\; \left[\hat{q}_{0.10}(x) - Q_{1-\alpha}(E),\;"
         r" \hat{q}_{0.90}(x) + Q_{1-\alpha}(E)\right],\quad 1-\alpha = 0.80$"
     ),

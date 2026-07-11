@@ -100,7 +100,8 @@ if submitted:
     st.divider()
     st.subheader(f"Estimated value: ${result['estimate_usd']:,.0f}")
     lo, hi = result["range_low_usd"], result["range_high_usd"]
-    st.markdown(f"**80% confidence range: ${lo:,.0f} – ${hi:,.0f}**")
+    # dollar signs escaped: st.markdown treats $...$ as LaTeX math
+    st.markdown(f"**80% confidence range: \\${lo:,.0f} – \\${hi:,.0f}**")
 
     # visualize where the estimate sits inside its range
     span = hi - lo

@@ -428,7 +428,7 @@ def build():
     # ---- 18. live demo ----------------------------------------------------------------------------------
     s = two_content_slide(prs, "Live demo — the valuation tool")
     bullets(body_frame(s, 1), [
-        (0, APP_URL, True),
+        (0, "Open the live tool", True),
         (0, "Scenario A — typical: NAmes, 1,500 sq ft, quality 5 → tight "
             "range (±13%).", False),
         (0, "Scenario B — high-value: NridgHt, 3,200 sq ft, quality 9 → "
@@ -438,6 +438,10 @@ def build():
         (0, "Risk control: link warmed before the talk; identical local "
             "fallback ready.", False),
     ], size=14)
+    # make the first bullet an actual clickable hyperlink
+    demo_run = body_frame(s, 1).paragraphs[0].runs[0]
+    demo_run.hyperlink.address = f"https://{APP_URL}/"
+    demo_run.font.color.rgb = HUST_RED
     add_picture_fit(s, BRAND / "app_screenshot.png",
                     Inches(4.9), Inches(1.6), Inches(4.85), Inches(5.2))
 
@@ -507,10 +511,14 @@ def build():
     closing = prs.slides.add_slide(prs.slide_layouts[12])
     add_text(closing, Inches(4.0), Inches(2.9), Inches(5.6), Inches(1.2), [
         ("THANK YOU !", 44, True, HUST_RED)], align=PP_ALIGN.CENTER)
-    add_text(closing, Inches(4.0), Inches(4.2), Inches(5.6), Inches(1.0), [
+    links_box = add_text(closing, Inches(4.0), Inches(4.2), Inches(5.6),
+                         Inches(1.0), [
         (f"Live tool: {APP_URL}", 12, False, INK),
         ("Code: github.com/ducnt3/house-price-analytics", 12, False, INK)],
         align=PP_ALIGN.CENTER)
+    paras = links_box.text_frame.paragraphs
+    paras[0].runs[0].hyperlink.address = f"https://{APP_URL}/"
+    paras[1].runs[0].hyperlink.address = "https://github.com/ducnt3/house-price-analytics"
 
     out = ROOT / "reports" / "hust-house-price-slides.pptx"
     prs.save(out)

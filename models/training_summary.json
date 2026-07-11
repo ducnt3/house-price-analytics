@@ -1,0 +1,19 @@
+{
+  "calibration_coverage": 0.8054474708171206,
+  "raw_coverage": 0.5914396887159533,
+  "conformal_offset_log": 0.05109146896359576,
+  "rmse": 24356.042064759753,
+  "mae": 15107.285154920792,
+  "interval_width_by_segment": {
+    "width_usd": {
+      "typical": 35192.8,
+      "mid": 41194.1,
+      "high-value": 77841.5
+    },
+    "width_pct": {
+      "typical": 31.8,
+      "mid": 25.8,
+      "high-value": 29.5
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# DEPLOYMENT dependencies — exactly what the live Streamlit app needs.
+# Streamlit Community Cloud installs this file (repo root) when building the
+# app, so it is kept lean: fast free-tier builds, low RAM footprint.
+#
+# Full development environment (EDA, monitoring, API, tests): requirements-dev.txt
+#
+# numpy is pinned <2 because evidently 0.4.x (dev/monitoring) is not compatible
+# with numpy 2 — one consistent version across dev and deploy.
+
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+lightgbm==4.5.0
+joblib==1.4.2
+streamlit==1.40.2

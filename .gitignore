@@ -1,0 +1,18 @@
+# Raw data is downloaded by each member from Kaggle (license: competition rules
+# forbid redistributing the data in a public repo). See README for instructions.
+data/raw/*
+!data/raw/.gitkeep
+
+# Local environments & caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+
+# Secrets — never committed
+.env
+
+# Internal working notes and planning scratch — not part of the deliverables
+plans/
+PROGRESS.md

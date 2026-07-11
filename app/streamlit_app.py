@@ -22,6 +22,10 @@ from src.modeling.valuation_service import ValuationService
 # Valuation is expressed as of the end of the model's training window
 VALUATION_YEAR = 2010
 
+# set_page_config must be the FIRST Streamlit command — even the spinner of a
+# cache_resource call before it makes Streamlit raise on startup
+st.set_page_config(page_title="House Price Valuation Tool", page_icon="🏠")
+
 
 @st.cache_resource
 def load_service() -> ValuationService:
@@ -31,8 +35,6 @@ def load_service() -> ValuationService:
 service = load_service()
 NEIGHBORHOODS = service.category_levels["Neighborhood"]
 KITCHEN_QUAL = ["Ex", "Gd", "TA", "Fa"]  # excellent .. fair, per Ames coding
-
-st.set_page_config(page_title="House Price Valuation Tool", page_icon="🏠")
 st.title("🏠 House Price Valuation Tool")
 st.caption(
     "Estimates a home's fair market value in Ames, Iowa with a **calibrated "

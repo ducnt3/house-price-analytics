@@ -47,6 +47,18 @@ def test_empty_input_falls_back_to_typical_home_defaults(service):
     assert 100_000 < r["estimate_usd"] < 250_000
 
 
+def test_streamlit_app_renders_without_exception():
+    # Executes the actual app script (catches ordering bugs like
+    # set_page_config-not-first that a plain HTTP check misses)
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(Path(__file__).resolve().parent.parent
+                               / "app" / "streamlit_app.py"),
+                           default_timeout=30).run()
+    assert not at.exception, f"app raised: {at.exception}"
+    assert at.title[0].value.startswith("🏠")
+
+
 def test_api_predict_and_health():
     from fastapi.testclient import TestClient
     from app.api.main import app

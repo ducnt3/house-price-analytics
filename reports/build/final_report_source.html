@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>House Price Prediction — Final Report</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '\\(', right: '\\)', display: false}]});"></script>
+<style>
+  :root { --hust-red: #C00000; --ink: #2b2b2b; --muted: #666; }
+  @page { size: A4; margin: 22mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         line-height: 1.52; font-size: 10.5pt; margin: 0; }
+  header.cover { border-bottom: 4px solid var(--hust-red); padding-bottom: 14px;
+                 margin-bottom: 22px; }
+  header.cover img { height: 58px; }
+  h1 { color: var(--hust-red); font-size: 21pt; margin: 14px 0 2px; }
+  .subtitle { font-size: 12pt; color: var(--muted); margin-bottom: 10px; }
+  h2 { color: var(--hust-red); font-size: 14pt; border-bottom: 1.5px solid #e5c9c9;
+       padding-bottom: 3px; margin-top: 22px; page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin-bottom: 4px; page-break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.5pt;
+          page-break-inside: avoid; }
+  th { background: var(--hust-red); color: #fff; text-align: left; }
+  th, td { border: 1px solid #ddd; padding: 5px 8px; }
+  tr:nth-child(even) td { background: #faf5f5; }
+  figure { margin: 14px 0; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 92%; }
+  figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 4px; }
+  .katex-display { margin: 10px 0; }
+  .links a { color: var(--hust-red); text-decoration: none; }
+  .callout { background: #faf3f3; border-left: 4px solid var(--hust-red);
+             padding: 8px 12px; margin: 10px 0; page-break-inside: avoid; }
+  ul { margin: 6px 0; } li { margin-bottom: 3px; }
+  .team td { font-size: 9.5pt; }
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <img src="../branding/hust-logo.png" alt="Hanoi University of Science and Technology">
+  <h1>How Much Is This House Worth — and How Sure Are We?</h1>
+  <div class="subtitle">House Price Prediction for a Real Estate Listing Platform<br>
+  IT5315E Business Analytics · Group Project · Final Report</div>
+  <table class="team">
+    <tr><th>Member</th><th>Student ID</th><th>Role</th></tr>
+    <tr><td>Đỗ Hoàng Việt</td><td>20252744M</td><td>Data Engineer — synthetic data, data dictionary, cleaning</td></tr>
+    <tr><td>Nguyễn Minh Huyền</td><td>20252007M</td><td>Data Analyst — EDA, visualization of price drivers</td></tr>
+    <tr><td>Nguyễn Thị Huyền Trang</td><td>20251322M</td><td>ML Engineer (Modeling) — features, regression models</td></tr>
+    <tr><td>Bùi Tá Cường</td><td>20242430M</td><td>ML Engineer (Evaluation) — CV, residuals, interval calibration</td></tr>
+    <tr><td>Nguyễn Tiến Đức</td><td>20252076M</td><td>MLOps Lead — deployment, API, monitoring</td></tr>
+  </table>
+  <div class="links">
+    <b>Live valuation tool:</b> <a href="https://house-price-analytics-tjpb7ntxsd6kzbapp7bymmv.streamlit.app/">house-price-analytics-tjpb7ntxsd6kzbapp7bymmv.streamlit.app</a><br>
+    <b>Source code:</b> <a href="https://github.com/ducnt3/house-price-analytics">github.com/ducnt3/house-price-analytics</a>
+  </div>
+</header>
+
+<h2>1. The business problem</h2>
+<p>A listing platform loses both ways when prices are wrong: an inflated asking price
+scares serious buyers away, while an underpriced home leaves the seller's money on the
+table. Agents need a <i>defensible</i> estimate long before a formal appraisal — and,
+just as importantly, they need to know <b>how much to trust it</b>. An estimate of
+\(\$180\mathrm{k} \pm \$18\mathrm{k}\) supports a confident listing;
+\(\$180\mathrm{k} \pm \$70\mathrm{k}\) says "get an appraisal first."
+Our deliverable is therefore not a number but a number <b>with a calibrated confidence
+range</b>, deployed as a working tool.</p>
+<p><b>Error tolerance.</b> Mispricing by roughly 10% stays within the margin agents
+negotiate; a systematic bias beyond about 5% at portfolio level distorts the platform's
+market statistics and must trigger model retraining.</p>
+
+<h2>2. The data — and why it can be trusted</h2>
+<p><b>Base:</b> the Kaggle Ames, Iowa dataset — 1,460 home sales with 80 structural
+attributes. <b>Extension (required synthetic component):</b> 12 contextual fields
+generated in Python, each documented in the data dictionary with its type, unit, valid
+range, and the business assumption behind it.</p>
+<h3>2.1 A real time axis</h3>
+<p>Rather than inventing listing dates, we anchored them to the sale dates already
+inside the Ames data (January 2006 – July 2010). No row contradicts itself, and the
+window spans a true market story — the financial crisis. A synthetic macro layer (an
+interest-rate series and a market price index with a boom, a −10% crisis, and a +9.5%
+rebound in 2010) re-expresses each sale price under that trend:</p>
+$$\mathrm{sale\_price}_i \;=\; \mathrm{SalePrice}_i \times \frac{I(m_i)}{\bar{I}}
+\times \varepsilon_i, \qquad \varepsilon_i \sim \mathrm{LogNormal}(0,\,0.02)$$
+<p>where \(I(m_i)\) is the index level in listing month \(m_i\) and \(\bar I\) its
+window average. The original Kaggle price is preserved in a separate column for
+auditability. All 175 sales of 2010 are held out as the "incoming stream" for
+monitoring.</p>
+<figure><img src="../figures/02_market_over_time.png">
+<figcaption>Figure 1 — Median price, synthetic market index, and interest rate over
+2006–2010; the shaded band is the monitoring holdout.</figcaption></figure>
+<h3>2.2 Behavioral realism, generated conditionally</h3>
+<ul>
+<li>Amenity distances are a neighborhood property: pricier neighborhoods sit closer to
+schools (realized correlation −0.60 with price); transit access is deliberately
+unpriced (r ≈ 0.1) — bus lines follow arterial roads, not wealth.</li>
+<li>Renovation costs are consistent with the dataset's real remodel-year column;
+days-on-market lengthens when the market index falls, as it did in 2008–09.</li>
+</ul>
+<h3>2.3 Documented imperfections</h3>
+<p>Real listing pipelines produce dirty data, so five seeded, documented problems
+(missing values, free-text label variants, sentinel 999s, metre/km unit errors,
+duplicate listings) were injected — only into synthetic fields and only before 2010, so
+the monitoring stream is never confused with dirt. Every claim in this section is
+enforced by automated tests, and generation reproduces byte-for-byte from a fixed
+seed.</p>
+
+<h2>3. What drives price (EDA)</h2>
+<ul>
+<li><b>Quality and size dominate.</b> Overall quality correlates 0.79 with price
+(median $85k at quality 3 → $346k at quality 9); living area 0.71.</li>
+<li><b>Location is a 3.5× lever.</b> Neighborhood medians span $90k (MeadowV) to $313k
+(NridgHt), and the amenity fields explain much of the premium: price falls steadily
+with school distance while transit distance is flat.</li>
+<li><b>The market moved</b> — up ~5% to mid-2007, down ~10% through 2009, rebounding
+in 2010. A price model in this market ages; monitoring is not optional.</li>
+</ul>
+<p>Sale price is right-skewed (skewness 1.93, falling to 0.12 after the transform), so
+every model predicts the log target</p>
+$$y \;=\; \log\left(1 + \mathrm{SalePrice}\right).$$
+<figure><img src="../figures/03_top_price_drivers.png" style="max-width:70%">
+<figcaption>Figure 2 — Top correlates of sale price. Synthetic amenity fields behave
+as designed.</figcaption></figure>
+
+<h2>4. Cleaning, with before/after evidence</h2>
+<table>
+<tr><th>Problem (diagnosed cause)</th><th>Before</th><th>After</th></tr>
+<tr><td>Duplicate listings (re-posted homes) — keep the earliest posting</td><td>12</td><td>0</td></tr>
+<tr><td>Free-text renovation labels (Y / yes / NO / …) → canonical Yes/No</td><td>51</td><td>0</td></tr>
+<tr><td>Days-on-market sentinel 999 → listing-quarter median impute</td><td>5</td><td>0</td></tr>
+<tr><td>Transit distance entered in metres → converted to km</td><td>4</td><td>0</td></tr>
+<tr><td>Missing school distance → neighborhood median (a neighborhood property)</td><td>26</td><td>0</td></tr>
+<tr><td>Kaggle "no such feature" NAs → explicit category</td><td>7,480 cells</td><td>0</td></tr>
+<tr><td>LotFrontage → neighborhood median (subdivision plans set frontage)</td><td>259</td><td>0</td></tr>
+<tr><td>Partial-sale outliers (Ids 524, 1299; huge area, far-below-trend price)</td><td>2 rows</td><td>dropped</td></tr>
+</table>
+<p>1,472 listings in → 1,458 out. Every fix targets a diagnosed cause, and the cleaning
+script prints this table on every run.</p>
+
+<h2>5. Features and multicollinearity</h2>
+<p><b>Leakage discipline.</b> Only information available at valuation time enters the
+model. Excluded: days-on-market (an outcome of the listing, unknown on pricing day) and
+the market price index (published with a lag — using the current month's value would be
+look-ahead leakage). Included: the interest rate, which is public when a home is
+listed.</p>
+<p>Derived features: property age, years since remodel, combined bathrooms, renovation
+flag and cost, amenity-proximity score. We keep one variable per concept (garage cars,
+not garage area — they correlate 0.88) and verify with variance inflation factors:</p>
+$$\mathrm{VIF}_j \;=\; \frac{1}{1 - R_j^{\,2}}$$
+<p>where \(R_j^2\) is from regressing feature \(j\) on all others. Maximum VIF across
+the 16 numeric features is <b>3.9</b>, far below the conventional threshold of 10 —
+the linear baselines are stable.</p>
+
+<h2>6. The model — and its honesty about uncertainty</h2>
+<h3>6.1 Comparison under 5-fold cross-validation</h3>
+<p>All models predict log price; metrics are reported on the dollar scale:</p>
+$$\mathrm{RMSE} = \sqrt{\tfrac{1}{n}\textstyle\sum_{i=1}^{n}(y_i - \hat y_i)^2}
+\qquad \mathrm{MAE} = \tfrac{1}{n}\textstyle\sum_{i=1}^{n}\lvert y_i - \hat y_i\rvert$$
+$$\mathrm{MAPE} = \tfrac{100\%}{n}\textstyle\sum_{i=1}^{n}
+\left\lvert\frac{y_i - \hat y_i}{y_i}\right\rvert
+\qquad R^2 = 1 - \frac{\sum_i (y_i - \hat y_i)^2}{\sum_i (y_i - \bar y)^2}$$
+<table>
+<tr><th>Model</th><th>RMSE</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>
+<tr><td>Linear Regression</td><td>$23,409</td><td>$15,806</td><td>9.11%</td><td>0.914</td></tr>
+<tr><td><b>Ridge (best point model)</b></td><td><b>$23,195</b></td><td><b>$15,573</b></td><td><b>8.99%</b></td><td><b>0.916</b></td></tr>
+<tr><td>Lasso</td><td>$23,324</td><td>$15,670</td><td>9.04%</td><td>0.915</td></tr>
+<tr><td>Random Forest</td><td>$29,509</td><td>$18,469</td><td>10.43%</td><td>0.863</td></tr>
+<tr><td>LightGBM (deployed, quantile)</td><td>$27,441</td><td>$17,334</td><td>9.78%</td><td>0.882</td></tr>
+</table>
+<p>Ridge wins on point accuracy — log price is close to linear in the drivers, and
+1,283 training rows favor low-variance models. <b>We nevertheless deploy the quantile
+LightGBM</b> (its median forecast as the point estimate): the business question demands
+a per-home confidence range, quantile regression provides feature-dependent intervals
+natively, and one coherent model beats stitching two model families together. The cost
+(9.78% vs 8.99% MAPE) is immaterial to the tool's purpose; the comparison is reported,
+not hidden.</p>
+<h3>6.2 Calibrated confidence intervals</h3>
+<p>Three LightGBM models are trained on the pinball (quantile) loss</p>
+$$\mathcal{L}_{\alpha}(y,\hat{y}) \;=\; \max\bigl(\alpha\,(y-\hat{y}),\;
+(\alpha-1)\,(y-\hat{y})\bigr), \qquad \alpha \in \{0.10,\, 0.50,\, 0.90\},$$
+<p>giving a p10–p90 band that <i>claims</i> 80% coverage. On a 20% calibration split
+never seen in training, the raw band actually contained only <b>59%</b> of true prices
+— naive quantile intervals lie. Conformalized quantile regression (CQR) measures the
+shortfall through the conformity score</p>
+$$E_i \;=\; \max\bigl(\hat{q}_{0.10}(x_i) - y_i,\;\; y_i - \hat{q}_{0.90}(x_i)\bigr)$$
+<p>and widens the band by the empirical \((1-\alpha)\)-quantile of these scores:</p>
+$$\hat{C}(x) \;=\; \Bigl[\hat{q}_{0.10}(x) - Q_{1-\alpha}(E),\;\;
+\hat{q}_{0.90}(x) + Q_{1-\alpha}(E)\Bigr], \qquad 1-\alpha = 0.80.$$
+<div class="callout"><b>Verified coverage after calibration: 80.5%</b> (target 80%).
+Interval width behaves as a buyer would expect: ≈$35k for a typical home, ≈$78k for
+high-value homes — and the UI translates width into advice (a wide range means
+"consider a professional appraisal").</div>
+<p>Residual analysis shows no systematic bias across price segments except the cheapest
+decile, which is over-predicted — noted as a limitation.</p>
+<figure><img src="../figures/08_residual_analysis.png">
+<figcaption>Figure 3 — Cross-validated residuals vs fitted values and mean bias by
+price decile.</figcaption></figure>
+
+<h2>7. The working product</h2>
+<ul>
+<li><b>Valuation tool</b> (live link on the cover): a Streamlit app returning the
+estimate, the calibrated 80% range, and a plain-language confidence note. The model
+runs in-process — the demo cannot be taken down by a second service failing.</li>
+<li><b>Prediction API:</b> a FastAPI service exposing <code>POST /predict</code> with
+OpenAPI documentation; omitted fields fall back to training-median defaults and the
+response lists which. Both surfaces share one serving layer, so they can never
+disagree.</li>
+<li>Deployment survived a real vendor shock: the first target (Hugging Face Spaces)
+paywalled compute mid-project; because the pipeline was proven in week one with a
+placeholder model, switching to Streamlit Community Cloud cost hours, not weeks.</li>
+</ul>
+
+<h2>8. Monitoring: the model watches itself age</h2>
+<p>The 175 sales of 2010 were replayed month by month through Evidently, evaluating a
+rolling 3-month window against the 2006–2009 training baseline. Four retraining
+triggers were defined <i>before</i> looking at the stream:</p>
+<table>
+<tr><th>Trigger</th><th>Definition</th><th>2010 outcome</th></tr>
+<tr><td>T1 — Data drift</td><td>&gt;30% of features drift (Evidently; windows of ≥40 rows)</td>
+<td>Fires Mar–Jul: interest-rate regime + post-crisis sales-mix shift</td></tr>
+<tr><td>T2 — Performance</td><td>Rolling RMSE &gt; 1.25× baseline</td>
+<td>Fires March (RMSE $32.0k vs $24.4k baseline)</td></tr>
+<tr><td>T3 — Systematic bias</td><td>|mean error| &gt; 5% of median price</td>
+<td>Fires Apr–Jul: bias −0.4% → <b>−7.9%</b> as the rebound accelerates</td></tr>
+<tr><td>T4 — Interval health</td><td>80%-range coverage &lt; 65%</td>
+<td>Never fires, but coverage degrades 80% → ~73% — early warning visible</td></tr>
+</table>
+<p>The verdict a real platform would act on: <b>retrain from March 2010</b> — the
+market recovered faster than the model's training window, and the model systematically
+prices below the market. Notably, drift detection alone (T1) shows <i>that</i> inputs
+changed; only the error and bias monitors (T2/T3) show it <i>matters</i> — the case for
+monitoring predictions, not just inputs.</p>
+<figure><img src="../figures/09_monitoring_timeline.png" style="max-width:78%">
+<figcaption>Figure 4 — Rolling RMSE, systematic bias, feature drift, and interval
+coverage over the 2010 stream; dashed red lines are the alert thresholds.</figcaption></figure>
+
+<h2>9. Pricing-strategy recommendations</h2>
+<ol>
+<li><b>Price on quality and location first</b> — quality, area, and neighborhood
+(largely via school proximity) carry most of the signal; renovation history refines
+it.</li>
+<li><b>Show the range, not just the number.</b> A calibrated range converts the tool
+from a black box into a negotiation aid and tells agents when to escalate to an
+appraisal.</li>
+<li><b>Treat the model as perishable.</b> In a moving market it drifted beyond
+tolerance within ~3 months; budget for quarterly retraining, gated by the four
+triggers above.</li>
+</ol>
+
+<h2>10. Limitations and future work</h2>
+<ul>
+<li>The contextual layer is synthetic; assumptions are documented and test-enforced,
+but real amenity and transaction data would change coefficients.</li>
+<li>Prices are expressed at the 2010 Ames market level; another market requires local
+data and recalibration.</li>
+<li>The cheapest price decile is over-predicted — a segment-specific model or
+monotonicity constraints are natural next steps.</li>
+<li>Retraining is recommended by triggers but not yet automated; the next step is a
+scheduled retrain–evaluate–promote loop.</li>
+<li>Monthly stream samples are small (6–48 sales), which bounds the confidence of
+monthly drift verdicts — hence rolling windows and minimum-sample gates.</li>
+</ul>
+
+</body>
+</html>

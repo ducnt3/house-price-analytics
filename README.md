@@ -77,6 +77,7 @@ notebooks/     EDA and residual-analysis notebooks
 app/           Streamlit valuation tool (primary deploy) + FastAPI service
 models/        trained model artifacts
 monitoring/    generated Evidently drift & performance reports
-reports/       final report and slides
+reports/       final report (PDF + HTML source), slides (PPTX on the official
+               HUST template, built by reports/build/build_slides.py), figures
 tests/         smoke tests (data schema, prediction sanity)
 ```

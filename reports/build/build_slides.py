@@ -151,6 +151,260 @@ def figure_slide(prs, title, fig_path, notes, fig_box=None, note_size=14):
     return s
 
 
+def set_notes(slide, vi, en):
+    """Attach a bilingual speaker note (Vietnamese first, then English)."""
+    slide.notes_slide.notes_text_frame.text = f"VI: {vi}\n\nEN: {en}"
+
+
+# Bilingual speaker scripts, one per slide, in slide-creation order.
+NOTES = [
+    # 1 — cover
+    ("Chào thầy/cô và cả lớp. Nhóm em trình bày dự án dự đoán giá nhà cho một "
+     "sàn bất động sản, đi trọn vòng đời từ dữ liệu thô đến mô hình được triển "
+     "khai và giám sát. Nhóm gồm 5 thành viên.",
+     "Good morning. We present a house-price prediction project for a real "
+     "estate listing platform — the full lifecycle from raw data to a "
+     "deployed, monitored model. Our team has five members."),
+    # 2 — agenda
+    ("Bài gồm 10 phần: bài toán kinh doanh, dữ liệu, phân tích khám phá, làm "
+     "sạch, đặc trưng, so sánh mô hình, khoảng tin cậy, demo trực tiếp, giám "
+     "sát, và khuyến nghị. Trọng tâm chấm điểm là độ chặt chẽ của từng bước.",
+     "Ten parts: business problem, data, EDA, cleaning, features, model "
+     "comparison, confidence intervals, live demo, monitoring, and "
+     "recommendations. Grading emphasizes the rigor of each stage."),
+    # 3 — business problem
+    ("Định giá sai gây thiệt cả hai phía: hét giá cao đuổi người mua, để giá "
+     "thấp mất tiền người bán. Môi giới cần ước tính đáng tin trước khi có "
+     "thẩm định, và cần biết tin bao nhiêu. Cùng mức 180k, ±18k thì đăng bán "
+     "tự tin, ±70k thì nên đi thẩm định — khoảng tin cậy đổi quyết định. KPI: "
+     "sai số điển hình ≤10%, bất định được hiệu chỉnh, thiên lệch ≤5%, có "
+     "triển khai chạy thật kèm giám sát.",
+     "Mispricing hurts both sides: overpricing scares buyers, underpricing "
+     "costs the seller. Agents need a trustworthy estimate before a formal "
+     "appraisal — and need to know how much to trust it. At $180k, ±18k means "
+     "list confidently, ±70k means appraise first — the range changes the "
+     "decision. KPIs: typical error ≤10%, calibrated uncertainty, bias ≤5%, "
+     "a live deployment with monitoring."),
+    # 4 — CRISP-DM + KPI bridge
+    ("Nhóm theo phương pháp luận CRISP-DM: hiểu bài toán kinh doanh trước, rồi "
+     "mọi metric kỹ thuật mới sinh ra từ một KPI. Đọc bảng từ trên xuống: cần "
+     "ước tính đủ tốt → MAPE; không làm lệch thống kê thị trường → thiên lệch; "
+     "nói cho người dùng độ tin cậy → độ phủ; đúng cỡ bất định → độ rộng "
+     "khoảng; bắt sai số lớn và giải thích giá → RMSE và R². Nói cách khác, "
+     "RMSE/MAE/MAPE/R² không báo cáo cho có — mỗi cái trả lời một mục tiêu.",
+     "We follow CRISP-DM: business understanding first, then every technical "
+     "metric derives from a KPI. Read the table top-down: a good-enough "
+     "estimate → MAPE; don't distort market stats → bias; tell the user how "
+     "much to trust it → coverage; right-size uncertainty → interval width; "
+     "catch big misses and explain price → RMSE and R². So RMSE/MAE/MAPE/R² "
+     "aren't reported for their own sake — each answers a goal."),
+    # 5 — data strategy
+    ("Nền là bộ Kaggle Ames: 1.460 giao dịch, 80 thuộc tính. Nhóm mở rộng "
+     "thêm 12 trường ngữ cảnh tổng hợp, mỗi trường có tài liệu đầy đủ. Quan "
+     "trọng: trục thời gian neo vào ngày bán thật, 2006 đến 7/2010 — nên có "
+     "cả giai đoạn khủng hoảng. Toàn bộ 175 giao dịch 2010 được giữ lại làm "
+     "luồng dữ liệu đến cho phần giám sát.",
+     "Base is Kaggle Ames: 1,460 sales, 80 attributes. We add 12 synthetic "
+     "contextual fields, each fully documented. Key point: the time axis is "
+     "anchored to the real sale dates, 2006 to July 2010 — so it spans the "
+     "crisis. All 175 sales of 2010 are held out as the incoming stream for "
+     "monitoring."),
+    # 6 — synthetic credibility
+    ("Dữ liệu tổng hợp không sinh ngẫu nhiên vô căn cứ mà theo điều kiện có "
+     "logic: khu đắt tiền gần trường hơn (tương quan −0.60), còn giao thông "
+     "cố ý không định giá. Mọi giả định đều được test tự động kiểm chứng và "
+     "sinh lại nguyên vẹn từ seed cố định. Đợt phục hồi +9.5% chỉ nằm trong "
+     "luồng giám sát — đó là tín hiệu drift được thiết kế có chủ ý.",
+     "The synthetic data isn't random — it's generated conditionally with "
+     "logic: pricier areas sit closer to schools (r = −0.60), while transit "
+     "is deliberately unpriced. Every assumption is checked by automated "
+     "tests and reproduces exactly from a fixed seed. The +9.5% rebound "
+     "lives only in the monitoring stream — a deliberately designed drift "
+     "signal."),
+    # 7 — designed imperfections
+    ("Để phần làm sạch là việc thật chứ không diễn, nhóm cố ý tiêm 5 loại lỗi "
+     "vào các trường tổng hợp: thiếu giá trị, nhãn tự do, giá trị sentinel, "
+     "sai đơn vị, và trùng dòng. Chỉ tiêm vào trước 2010 nên luồng giám sát "
+     "vẫn sạch — drift không bị lẫn với bẩn. Vì biết trước sự thật nền, chất "
+     "lượng làm sạch chứng minh được.",
+     "So cleaning is real work, we deliberately inject five kinds of dirt "
+     "into the synthetic fields: missing values, free-text labels, sentinel "
+     "values, wrong units, and duplicate rows. Injected only before 2010, so "
+     "the monitoring stream stays clean — drift is never confused with dirt. "
+     "Because we know the ground truth, cleaning quality is provable."),
+    # 8 — EDA target
+    ("Giá bán lệch phải mạnh: trung vị 163k nhưng đuôi kéo tới 779k, độ lệch "
+     "1.93. Sau khi lấy log, độ lệch còn 0.12 — gần chuẩn. Nên toàn bộ mô "
+     "hình dự đoán trên thang log rồi đổi ngược về đô-la.",
+     "Sale price is strongly right-skewed: median $163k but a tail to $779k, "
+     "skew 1.93. After a log transform, skew drops to 0.12 — near-normal. So "
+     "all models predict on the log scale and back-transform to dollars."),
+    # 9 — EDA drivers
+    ("Hai yếu tố mạnh nhất là chất lượng tổng thể (0.79) và diện tích ở "
+     "(0.71) — giá trung vị tăng gấp bốn từ chất lượng 3 lên 9. Các tiện ích "
+     "tổng hợp hành xử đúng thiết kế: gần trường và bệnh viện làm tăng giá, "
+     "giao thông thì không. Chi phí cải tạo tương quan 0.69 nhưng một phần là "
+     "dẫn xuất, nên sẽ kiểm ở bước VIF.",
+     "The two strongest drivers are overall quality (0.79) and living area "
+     "(0.71) — median price quadruples from quality 3 to 9. Synthetic "
+     "amenities behave as designed: school and hospital proximity raise "
+     "price, transit doesn't. Renovation cost correlates 0.69 but is partly "
+     "derivative, so we check it at the VIF step."),
+    # 10 — EDA outliers
+    ("Hai căn trên 4.000 sqft bán thấp hơn hẳn xu hướng — đây là các partial "
+     "sale nổi tiếng của bộ Ames, tức giao dịch không theo thị trường. Nhóm "
+     "loại chúng ở bước làm sạch kèm lý do rõ ràng, không xoá tuỳ tiện.",
+     "Two homes over 4,000 sq ft sold far below trend — the well-known Ames "
+     "partial sales, i.e. non-market transactions. We drop them in cleaning "
+     "with an explicit justification, not arbitrarily."),
+    # 11 — EDA location
+    ("Vị trí là đòn bẩy giá gấp 3,5 lần: từ 90k ở khu rẻ nhất đến 313k ở khu "
+     "đắt nhất. Phần lớn chênh lệch giải thích được bằng khoảng cách tiện "
+     "ích. Điểm actionable cho sàn: gần trường được định giá, còn gần bến xe "
+     "thì không.",
+     "Location is a 3.5× price lever: $90k in the cheapest neighborhood to "
+     "$313k in the priciest. Most of the gap is explained by amenity "
+     "distances. Actionable insight for the platform: proximity to schools "
+     "is priced in, bus access is not."),
+    # 12 — multicollinearity
+    ("Có bốn cặp biến tương quan trên 0.8 — chúng nói cùng một điều. Nhóm giữ "
+     "lại một biến cho mỗi khái niệm rồi kiểm bằng hệ số phóng đại phương sai "
+     "VIF. VIF lớn nhất chỉ 3.9, dưới ngưỡng 10 — nên các mô hình tuyến tính "
+     "ổn định và hệ số diễn giải được.",
+     "Four variable pairs correlate above 0.8 — they say the same thing. We "
+     "keep one variable per concept, then verify with variance inflation "
+     "factors. Max VIF is only 3.9, below the threshold of 10 — so the "
+     "linear models are stable and their coefficients interpretable."),
+    # 13 — cleaning evidence
+    ("Bảng này in ra mỗi lần chạy pipeline: mỗi hàng là một lỗi được chẩn "
+     "đoán nguyên nhân và cách xử lý, kèm số lượng trước/sau. Ví dụ 12 tin "
+     "trùng giữ bản sớm nhất, 51 nhãn cải tạo chuẩn hoá, sai đơn vị mét chia "
+     "1000. Vào 1.472 dòng, ra 1.458 — mọi sửa đổi đều truy vết được.",
+     "This table prints on every pipeline run: each row is a diagnosed "
+     "problem, its fix, and before/after counts. E.g. 12 duplicate listings "
+     "keep the earliest, 51 renovation labels normalized, metre units "
+     "divided by 1000. 1,472 rows in, 1,458 out — every change is "
+     "traceable."),
+    # 14 — features & leakage
+    ("Nhóm tạo các đặc trưng dẫn xuất như tuổi nhà, tổng số phòng tắm, điểm "
+     "tiện ích. Kỷ luật quan trọng nhất là chống rò rỉ: chỉ dùng thứ môi giới "
+     "biết tại thời điểm định giá. Loại days-on-market vì là kết quả sau khi "
+     "đăng, và loại chỉ số giá thị trường vì công bố trễ — đưa vào sẽ nhìn "
+     "trộm đợt phục hồi 2010. Hợp đồng đặc trưng cuối: 16 biến số + 6 biến "
+     "phân loại.",
+     "We build derived features like property age, total baths, amenity "
+     "score. The key discipline is anti-leakage: only what an agent knows at "
+     "valuation time. We exclude days-on-market — an outcome of listing — "
+     "and the market price index — published with a lag; feeding it would "
+     "let the model peek at the 2010 rebound. Final feature contract: 16 "
+     "numeric + 6 categorical."),
+    # 15 — model comparison
+    ("Năm mô hình so sánh bằng CV 5-fold. Ridge thắng về điểm dự đoán: MAPE "
+     "8.99%, R² 0.916. Cây kém hơn ở đây vì log-giá gần tuyến tính với các "
+     "yếu tố và cỡ mẫu ~1.300 ưu tiên mô hình phương sai thấp. Nhưng — như "
+     "slide sau nói — độ chính xác điểm chưa phải sản phẩm cuối.",
+     "Five models compared by 5-fold CV. Ridge wins on point accuracy: MAPE "
+     "8.99%, R² 0.916. Trees do worse here because log-price is near-linear "
+     "in the drivers and n ≈ 1,300 favors low-variance models. But — as the "
+     "next slide argues — point accuracy isn't the final deliverable."),
+    # 16 — residuals
+    ("Phân tích phần dư: không có xu hướng theo giá trị dự đoán, các decile "
+     "2–9 không thiên lệch — mô hình lành mạnh ở phần lớn dải giá. Điểm yếu "
+     "thành thật: decile rẻ nhất bị dự đoán cao +13%, decile đắt nhất hơi "
+     "thấp −4.7% — hiện tượng co ngót cổ điển. Nhóm ghi nhận là hạn chế và "
+     "khoảng tin cậy được nới rộng đúng ở những vùng đó.",
+     "Residual analysis: no trend versus fitted values, deciles 2–9 unbiased "
+     "— the model is healthy across most of the range. Honest weakness: the "
+     "cheapest decile is over-predicted by +13%, the priciest slightly under "
+     "by −4.7% — classic shrinkage. We flag it as a limitation, and "
+     "intervals widen exactly there."),
+    # 17 — model choice
+    ("Đây là lập luận trung tâm: bài toán yêu cầu một khoảng tin cậy cho từng "
+     "căn, không chỉ một con số. Nên nhóm triển khai ba mô hình LightGBM cho "
+     "phân vị 10/50/90 huấn luyện bằng pinball loss — cho khoảng phụ thuộc "
+     "đặc trưng một cách tự nhiên. Đây là một họ mô hình mạch lạc, không chắp "
+     "điểm Ridge vào khoảng của mô hình khác. Cái giá 9.78% so với 8.99% "
+     "MAPE là không đáng kể so với KPI biên đàm phán, và nhóm báo cáo công "
+     "khai chứ không giấu.",
+     "This is the central argument: the task requires a per-home confidence "
+     "range, not just a number. So we deploy three LightGBM models for the "
+     "10/50/90 quantiles trained on the pinball loss — feature-dependent "
+     "intervals natively. It's one coherent model family, not a Ridge point "
+     "stitched onto someone else's band. The cost, 9.78% vs 8.99% MAPE, is "
+     "immaterial against the negotiation-margin KPI — and we report it "
+     "openly."),
+    # 18 — conformal calibration
+    ("Đây là phần thành thật nhất. Khoảng thô ban đầu tuyên bố phủ 80% nhưng "
+     "thực tế chỉ phủ 59% trên dữ liệu chưa thấy — tức nó nói dối. Nhóm dùng "
+     "conformalized quantile regression để đo đúng độ thiếu hụt rồi nới "
+     "khoảng theo phân vị thực nghiệm của điểm số. Sau hiệu chỉnh, độ phủ đo "
+     "được 80.5%, khớp mục tiêu. Độ rộng co giãn hợp lý: ~35k cho nhà điển "
+     "hình, ~78k cho nhà cao cấp — khoảng rộng nghĩa là nên đi thẩm định.",
+     "This is our most honest part. The raw band claimed 80% coverage but "
+     "actually covered only 59% on unseen data — it lied. We use "
+     "conformalized quantile regression to measure the shortfall, then widen "
+     "the band by the empirical quantile of the scores. After calibration, "
+     "measured coverage is 80.5%, on target. Width scales sensibly: ~$35k "
+     "for typical homes, ~$78k for high-value ones — a wide range means "
+     "'consider an appraisal'."),
+    # 19 — live demo
+    ("Giờ em demo công cụ chạy thật trên Streamlit. Kịch bản A — nhà điển "
+     "hình ở NAmes cho khoảng hẹp. Kịch bản B — biệt thự ở NridgHt cho khoảng "
+     "rộng kèm khuyến nghị thẩm định. Cùng mô hình đó cũng chạy sau một REST "
+     "API FastAPI. Để kiểm soát rủi ro, em đã làm nóng link trước và có bản "
+     "chạy local dự phòng.",
+     "Now a live demo of the tool on Streamlit. Scenario A — a typical home "
+     "in NAmes gives a tight range. Scenario B — a mansion in NridgHt gives "
+     "a wide range plus appraisal advice. The same model also runs behind a "
+     "FastAPI REST endpoint. For risk control, I warmed the link beforehand "
+     "and have an identical local fallback."),
+    # 20 — monitoring design
+    ("Mô hình tự theo dõi bản thân qua bốn trigger, tất cả định nghĩa trước "
+     "khi replay dữ liệu để không bị chỉnh cho khớp: T1 drift dữ liệu, T2 "
+     "hiệu năng RMSE, T3 thiên lệch hệ thống, T4 sức khoẻ khoảng tin cậy. "
+     "Dùng cửa sổ trượt 3 tháng vì từng tháng riêng lẻ quá ít mẫu — cửa sổ 10 "
+     "dòng gắn cờ mọi biến là drift, đã kiểm chứng là nhiễu.",
+     "The model watches itself through four triggers, all defined before "
+     "replaying the data so they're not tuned to fit: T1 data drift, T2 "
+     "performance RMSE, T3 systematic bias, T4 interval health. We use "
+     "3-month rolling windows because single months are too small — a 10-row "
+     "window flags every feature as drifted, verified to be noise."),
+    # 21 — 2010 replay
+    ("Cho luồng 2010 chạy qua từng tháng: tháng 1–2 lành mạnh. Tháng 3 RMSE "
+     "bật lên và drift vượt ngưỡng — tín hiệu retrain đầu tiên. Từ tháng 4 "
+     "đến 7, thiên lệch trôi từ −0.4% xuống −7.9% khi thị trường phục hồi "
+     "nhanh hơn cửa sổ huấn luyện, độ phủ tụt còn ~73%. Kết luận: retrain từ "
+     "tháng 3/2010. Bài học: drift đầu vào nói có gì đó đổi, nhưng chỉ giám "
+     "sát sai số và thiên lệch mới chứng minh điều đó quan trọng.",
+     "Running the 2010 stream month by month: January–February healthy. "
+     "March, RMSE spikes and drift crosses the threshold — the first retrain "
+     "signal. From April to July, bias drifts from −0.4% to −7.9% as the "
+     "market rebounds faster than the training window, and coverage sags to "
+     "~73%. Verdict: retrain from March 2010. Lesson: input drift says "
+     "something changed, but only error and bias monitoring prove it "
+     "matters."),
+    # 22 — recommendations & limitations
+    ("Khuyến nghị cho sàn: định giá trước hết dựa vào chất lượng và vị trí; "
+     "luôn hiển thị khoảng tin cậy vì nó biến hộp đen thành công cụ đàm phán; "
+     "coi mô hình là hàng dễ hỏng và lên ngân sách retrain hàng quý; đưa nhà "
+     "có khoảng rộng sang dịch vụ thẩm định. Hạn chế: lớp ngữ cảnh là tổng "
+     "hợp, giá ở mức Ames 2010, decile rẻ bị dự đoán cao, và retrain hiện do "
+     "trigger đề xuất chứ chưa tự động.",
+     "Recommendations for the platform: price on quality and location first; "
+     "always show the range because it turns a black box into a negotiation "
+     "aid; treat the model as perishable and budget quarterly retraining; "
+     "route wide-interval homes to appraisal. Limitations: the contextual "
+     "layer is synthetic, prices are at the 2010 Ames level, the cheap "
+     "decile is over-predicted, and retraining is trigger-recommended but "
+     "not yet automated."),
+    # 23 — closing
+    ("Cảm ơn thầy/cô và cả lớp đã lắng nghe. Công cụ chạy thật và mã nguồn ở "
+     "hai link này. Nhóm em sẵn sàng trả lời câu hỏi.",
+     "Thank you for listening. The live tool and source code are at these "
+     "two links. We're happy to take questions."),
+]
+
+
 # --------------------------------------------------------------------------
 # deck
 # --------------------------------------------------------------------------
@@ -542,9 +796,16 @@ def build():
     paras[0].runs[0].hyperlink.address = f"https://{APP_URL}/"
     paras[1].runs[0].hyperlink.address = "https://github.com/ducnt3/house-price-analytics"
 
+    # bilingual speaker notes, applied in slide-creation order
+    slides = list(prs.slides)
+    assert len(slides) == len(NOTES), (len(slides), len(NOTES))
+    for slide, (vi, en) in zip(slides, NOTES):
+        set_notes(slide, vi, en)
+
     out = ROOT / "reports" / "hust-house-price-slides.pptx"
     prs.save(out)
-    print(f"wrote {out} ({len(prs.slides._sldIdLst)} slides)")
+    print(f"wrote {out} ({len(prs.slides._sldIdLst)} slides, "
+          f"{len(NOTES)} bilingual notes)")
 
 
 if __name__ == "__main__":

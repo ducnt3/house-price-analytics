@@ -204,6 +204,28 @@ def build():
             "monitoring.", False),
     ], size=15)
 
+    # ---- 3b. CRISP-DM + KPI-to-metric bridge --------------------------------
+    s = content_slide(prs, "From business goals to metrics (CRISP-DM)")
+    add_text(s, Inches(0.6), Inches(1.35), Inches(8.8), Inches(0.9), [
+        ("We follow CRISP-DM: business understanding comes first. Every "
+         "technical metric below exists to answer a business KPI — RMSE / MAE "
+         "/ MAPE / R² are not reported for their own sake.", 14, False, INK),
+    ])
+    add_table(s, [
+        ["Business goal / KPI", "Technical metric", "Target · result"],
+        ["Estimate agents can act on", "MAPE (with MAE in $)", "≤ ~10%  ·  9.78%"],
+        ["Don't skew market statistics", "Signed bias, % of median", "≤ 5%  ·  monitored"],
+        ["Tell user how much to trust it", "Interval coverage (unseen)", "≈ 80%  ·  80.5%"],
+        ["Right-size uncertainty per home", "Interval width by segment", "$35k vs $78k"],
+        ["Catch big misses / explain price", "RMSE  ·  R²", "$24.4k  ·  0.88–0.92"],
+    ], Inches(0.5), Inches(2.45), Inches(9.0),
+       col_widths=[3.6, 3.0, 2.4], size=13)
+    box = s.shapes.add_textbox(Inches(0.6), Inches(6.2), Inches(8.8), Inches(0.7))
+    bullets(box.text_frame, [
+        (0, "Read top-down: the deliverable is a calibrated, unbiased, "
+            "decision-changing estimate — the metrics just measure it.", True)],
+        size=13)
+
     # ---- 4. data strategy ----------------------------------------------------
     s = two_content_slide(prs, "Data: real base + documented synthetic context")
     bullets(body_frame(s, 1), [

@@ -104,7 +104,9 @@ estate listing platform: a model that answers, for any property, <i>"what is its
 estimated market price — and how confident is that estimate?"</i> The result is a
 live, publicly accessible valuation tool backed by a documented, reproducible
 pipeline and a monitoring system that demonstrably detects when the model goes
-stale.</p>
+stale. The work follows the <b>CRISP-DM</b> lifecycle: business understanding
+comes first, and every technical metric we report (RMSE, MAE, MAPE, R², coverage)
+is derived from a business KPI rather than reported for its own sake (Section 1.3).</p>
 <p><b>Data.</b> The Kaggle Ames housing dataset (1,460 sales, 80 attributes) was
 extended with 12 synthetic contextual fields — amenity distances, renovation history,
 days-on-market, and a macro layer of interest rates and a market price index. The
@@ -156,24 +158,44 @@ the point price. The same point estimate at \(\pm\$70\mathrm{k}\) says the home 
 unusual for the market — order an appraisal before committing. A valuation tool that
 communicates only a point number hides exactly the information that determines how
 it should be used.</p>
-<h3>1.2 Business question and success criteria</h3>
+<h3>1.2 Approach: the CRISP-DM lifecycle</h3>
+<p>The work follows <b>CRISP-DM</b> (Cross-Industry Standard Process for Data
+Mining) — the reference methodology for analytics projects — rather than jumping
+straight to modeling. CRISP-DM insists that <i>business understanding</i> comes
+first and frames every later choice: the technical metrics we report exist only
+because a business objective demanded them (Section 1.3). Its six phases map onto
+the course's eight modules as follows.</p>
+<table>
+<tr><th>CRISP-DM phase</th><th>What it means here</th><th>Module(s) · report §</th></tr>
+<tr><td><b>Business understanding</b></td><td>Frame the pricing problem, define who is hurt by error, agree KPIs before touching data</td><td>M1 · §1</td></tr>
+<tr><td><b>Data understanding</b></td><td>Assemble the Kaggle base + synthetic context; explore distributions, drivers, and the time axis</td><td>M1–M2 · §2–3</td></tr>
+<tr><td><b>Data preparation</b></td><td>Clean with before/after evidence; engineer features; enforce leakage discipline and check multicollinearity</td><td>M3–M4 · §4–5</td></tr>
+<tr><td><b>Modeling</b></td><td>Train and compare five regressors; build quantile models for a confidence range</td><td>M5 · §6–7</td></tr>
+<tr><td><b>Evaluation</b></td><td>Cross-validate, analyze residuals, and verify interval coverage against the KPIs — not just accuracy</td><td>M5 · §6.3–7.3</td></tr>
+<tr><td><b>Deployment</b></td><td>Ship a live tool + API, then monitor drift, error, and bias with pre-defined retraining triggers</td><td>M6–M7 · §8–9</td></tr>
+</table>
+
+<h3>1.3 Business question, success criteria, and the metrics they justify</h3>
 <div class="callout"><b>Business question.</b> Given a property's characteristics
 and location, what is its estimated market price, and how confident is that
 estimate?</div>
-<p>Success criteria (KPIs) agreed before modeling:</p>
-<ul>
-<li><b>Typical error within negotiation margin.</b> Mean absolute percentage error
-around 10% or better — roughly the room within which agents negotiate anyway.</li>
-<li><b>Honest uncertainty.</b> The stated confidence range must be empirically
-calibrated: an "80% range" must contain the true price about 80% of the time on
-data the model never saw. A range that merely decorates the point estimate fails
-this criterion.</li>
-<li><b>Bounded systematic bias.</b> Portfolio-level bias beyond ±5% distorts platform
-market statistics and triggers retraining (Section 9).</li>
-<li><b>A working, accessible deployment</b> and <b>functioning monitoring</b> — the
-product must run on a free cloud tier and watch its own health.</li>
-</ul>
-<h3>1.3 Cost asymmetry of mispricing</h3>
+<p>A prediction is only useful if it changes a decision, so we fixed the
+<b>business KPIs</b> — the outcomes a platform actually cares about — before
+modeling, then derived the technical metric that measures each one. This is the
+chain that gives RMSE, MAE, MAPE and R² their meaning: each earns its place by
+answering a business question, not because it is a standard number to report.</p>
+<table>
+<tr><th>Business goal</th><th>Business KPI (stakeholder language)</th><th>Technical metric</th><th>Target · result</th></tr>
+<tr><td>Estimate close enough to act on</td><td>Typical error stays inside the margin agents negotiate within anyway</td><td><b>MAPE</b> (relative error), reported with <b>MAE</b> in dollars</td><td>≤ ~10% · <b>9.78%</b> deployed (MAE ≈ $15k)</td></tr>
+<tr><td>Don't distort platform market statistics</td><td>Valuations aren't systematically high or low across the portfolio</td><td><b>Mean signed error (bias)</b> as % of median price</td><td>|bias| ≤ 5% · monitored, alerts in 2010 (§9)</td></tr>
+<tr><td>Tell the user how much to trust the number</td><td>An "80% range" really contains the price 80% of the time</td><td><b>Empirical interval coverage</b> on unseen data</td><td>≈ 80% · <b>80.5%</b> after calibration (§7)</td></tr>
+<tr><td>Right-size uncertainty per home</td><td>Tight range for ordinary homes, wide range for unusual ones</td><td><b>Interval width</b> by price segment</td><td>informative, not flat · $35k vs $78k (§7.4)</td></tr>
+<tr><td>Catch big-dollar misses; explain price variation</td><td>Rare large errors are penalized; the model demonstrably captures real drivers</td><td><b>RMSE</b> (selection + monitoring tripwire); <b>R²</b> (sanity/communication)</td><td>RMSE $24.4k drives §9 alert at 1.25×; R² 0.88–0.92</td></tr>
+</table>
+<p>Read top-down, the table is CRISP-DM's business-understanding phase made concrete:
+the deliverable is a <i>calibrated, unbiased, decision-changing</i> estimate, and
+every metric in Sections 6–9 traces back to one of these rows.</p>
+<h3>1.4 Cost asymmetry of mispricing</h3>
 <p>Over- and under-valuation are not symmetric in business impact. Overpricing costs
 time: our synthetic days-on-market field encodes the empirical rule that homes
 priced above their neighborhood's typical level sit longer (Section 2.3), and every
@@ -433,6 +455,8 @@ $$\mathrm{MAPE} = \tfrac{100\%}{n}\textstyle\sum_{i=1}^{n}
 <p>RMSE penalizes large misses (relevant when a single badly mispriced luxury home
 is costly); MAE reflects the typical case; MAPE normalizes across price levels and
 maps directly to the "negotiation margin" KPI; R² summarizes explained variance.
+Each row of the KPI-to-metric bridge in Section 1.3 is answered below: MAPE/MAE here,
+bias in Section 9, and coverage/width in Section 7.
 Linear models receive standardized numerics and one-hot categoricals; tree models
 receive raw numerics and native categorical splits.</p>
 <h3>6.2 Candidates and results</h3>

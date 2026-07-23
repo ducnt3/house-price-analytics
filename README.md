@@ -29,6 +29,7 @@ is its estimated market price, and how confident is that estimate?"*
 | [PROJECT_BRIEF.md](PROJECT_BRIEF.md) | Course specification (source of truth) |
 | [DECISIONS.md](DECISIONS.md) | Every design choice, in plain business language |
 | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) | Every synthetic field: type, unit, range, generation logic |
+| [docs/huong-dan-cho-nhom.md](docs/huong-dan-cho-nhom.md) | Team guide (Vietnamese): goals, what to read, what to run, defense checklist |
 
 ## Setup
 
